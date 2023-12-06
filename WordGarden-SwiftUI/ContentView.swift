@@ -5,6 +5,7 @@
 //  Created by Leo  on 27.11.23.
 //
 
+import AVFAudio
 import SwiftUI
 
 struct ContentView: View {
@@ -20,6 +21,7 @@ struct ContentView: View {
     @State private var imageName = "flower8"
     @State private var playAgainHidden = true
     @State private var playAgainButtonlabel = "Another Word?"
+    @State private var audioPlayer: AVAudioPlayer!
     @FocusState private var textFieldIsFocused: Bool
     
     private let wordsToGuess = ["SWIFT", "DOG", "CAT"]
@@ -124,6 +126,7 @@ struct ContentView: View {
             Image(imageName)
                 .resizable()
                 .scaledToFit()
+                .animation(.easeIn(duration: 0.75), value: imageName)
             
         }
         .ignoresSafeArea(edges: .bottom)
@@ -156,20 +159,30 @@ struct ContentView: View {
     func updateGameplay() {
         if !wordToGuess.contains(guessedLetter) {
             guessesRemaining -= 1
-            imageName = "flower\(guessesRemaining)"
+            // Animate crumbling leaf and play "inncorect" sound
+            imageName = "wilt\(guessesRemaining)"
+            playSound(soundName: "incorrect")
+            // Delay change to flower image until after wilt animation is done
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                imageName = "flower\(guessesRemaining)"
+            }
+        }else {
+            playSound(soundName: "correct")
         }
+        
         // when do we play another word?
         if !revealedWord.contains("_") {
             gameStatusMessage = "You've guessed it! It took You \(lettersGuessed.count) guesses to guess the word."
             wordsGuessed += 1
             currentWordIndex += 1
             playAgainHidden = false
-            
+            playSound(soundName: "word-guessed")
         } else if guessesRemaining == 0 {
             gameStatusMessage = "So sorry. You are all out of guesses."
             wordsMissed += 1
             currentWordIndex += 1
             playAgainHidden = false
+            playSound(soundName: "word-not-guessed")
         } else {
             gameStatusMessage = "You've made \(lettersGuessed.count) Guess\(lettersGuessed.count == 1 ? "" : "es")"
         }
@@ -179,6 +192,19 @@ struct ContentView: View {
             gameStatusMessage = gameStatusMessage + "\nYou've tried all of the words. Up for another round?"
         }
         guessedLetter = ""
+    }
+    
+    func playSound(soundName: String) {
+        guard let soundFile = NSDataAsset(name: soundName) else {
+            print("🤬 Could not read file named \(soundName)")
+            return
+        }
+        do {
+            audioPlayer = try AVAudioPlayer(data: soundFile.data)
+            audioPlayer.play()
+        } catch {
+            print("🤬 ERROR: \(error.localizedDescription) creating audioPlayer")
+        }
     }
 }
 
